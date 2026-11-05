@@ -1,0 +1,24 @@
+# /etc/systemd/system/microsip-prov.service
+[Unit]
+Description=Provisionamento MicroSIP
+After=network.target
+
+[Service]
+User=microsip-prov
+Group=microsip-prov
+WorkingDirectory=/opt/microsip-prov
+Environment=PROV_DATA_DIR=/opt/microsip-prov/data
+Environment=PROV_BIND=127.0.0.1
+Environment=PROV_PORT=8088
+# gere com: openssl rand -hex 32   (nunca mude depois: invalidaria os tokens dos clientes,
+# que entao voltam a usar a senha SIP para se autenticar)
+EnvironmentFile=/etc/microsip-prov.env
+ExecStart=/usr/bin/python3 -I /opt/microsip-prov/prov_server.py
+Restart=always
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/microsip-prov
+
+[Install]
+WantedBy=multi-user.target

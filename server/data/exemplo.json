@@ -1,0 +1,39 @@
+{
+  "_comentario": "Um arquivo por cliente (tenant). Nome do arquivo = tenant da URL: /microsip/v1/exemplo/<ramal>",
+  "refresh": 21600,
+  "defaults": {
+    "account": {
+      "label": "Exemplo Ltda",
+      "server": "pbx.exemplo.com.br",
+      "proxy": "",
+      "domain": "pbx.exemplo.com.br",
+      "transport": "udp",
+      "voicemailNumber": "*97",
+      "registerRefresh": 300,
+      "keepAlive": 15,
+      "allowRewrite": 1,
+      "SRTP": "",
+      "ICE": 0,
+      "publish": 0
+    },
+    "settings": {
+      "denyIncoming": "",
+      "autoAnswer": "",
+      "forwarding": "",
+      "buttonAC": 0,
+      "buttonCONF": 0,
+      "recordingButton": 0,
+      "enableFeatureCodeBT": 0,
+      "featureCodeBT": "##",
+      "enableFeatureCodeAT": 0,
+      "featureCodeAT": "*2",
+      "audioCodecs": "PCMA/8000/1 PCMU/8000/1 G722/16000/1",
+      "singleMode": 0
+    }
+  },
+  "extensions": {
+    "1001": { "password": "troque-esta-senha", "displayName": "Recepção" },
+    "1002": { "password": "outra-senha", "displayName": "Financeiro", "settings": { "recordingButton": 1 } },
+    "1003": { "password": "senha-1003", "displayName": "Desligado", "disabled": true }
+  }
+}

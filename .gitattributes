@@ -1,0 +1,5 @@
+# fontes do MicroSIP sao CRLF; preserva como estao
+src/microsip/** -text
+installer/lang/*.txt -text
+*.exe binary
+*.7z binary

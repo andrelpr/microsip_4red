@@ -1,0 +1,122 @@
+# [fork] Compila o MicroSIP personalizado e gera o instalador.
+#
+# Configuracao no GitHub (Settings > Secrets and variables > Actions):
+#   secret   FORK_INI_KEY            chave de criptografia das senhas no microsip.ini
+#                                    (defina UMA VEZ e nunca mais mude: senhas salvas ficariam ilegiveis)
+#   variable FORK_PROVISIONING_URL   URL base do provisionamento embutida (opcional; o instalador aceita /URL=)
+#
+# Resultado: artefato "MicroSIP-Setup" (instalador) e "MicroSIP-portable" (exe + arquivos).
+# Ao criar uma tag v* (ex.: v1.0.0), publica um Release com o instalador.
+
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  PJ_VERSION: 2.15.1
+  VCPKG_TRIPLET: x86-windows-static
+  VCPKG_PORTS: openssl opus sqlitecpp
+
+jobs:
+  build:
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versao
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "FORK_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "FORK_VERSION=3.22.16-fork.${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: C:\vcpkg\installed
+          key: vcpkg-${{ env.VCPKG_TRIPLET }}-${{ env.VCPKG_PORTS }}-v1
+
+      - name: Dependencias (vcpkg)
+        shell: pwsh
+        run: |
+          $ports = "$env:VCPKG_PORTS".Split(' ') | ForEach-Object { "$($_):$env:VCPKG_TRIPLET" }
+          vcpkg install @ports
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          vcpkg integrate install
+
+      - name: Baixar pjproject ${{ env.PJ_VERSION }}
+        shell: bash
+        run: git clone --depth 1 --branch "$PJ_VERSION" https://github.com/pjsip/pjproject.git pj
+
+      - name: Preparar fontes
+        shell: bash
+        env:
+          FORK_PROVISIONING_URL: ${{ vars.FORK_PROVISIONING_URL }}
+          FORK_INI_KEY: ${{ secrets.FORK_INI_KEY }}
+        run: |
+          cp build/config_site.h pj/pjlib/include/pj/config_site.h
+          # o projeto do MicroSIP espera ficar dentro da arvore do pjproject (..\pjlib, ..\lib, ...)
+          cp -r src/microsip pj/microsip
+          python build/gen_fork_config.py pj/microsip/fork_config.h
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Compilar pjproject
+        working-directory: pj
+        run: >
+          msbuild pjproject-vs14.sln /t:libpjproject /m /v:minimal
+          /p:Configuration=Release-Static /p:Platform=Win32
+          /p:VcpkgEnabled=true /p:VcpkgTriplet=${{ env.VCPKG_TRIPLET }}
+
+      - name: Compilar MicroSIP
+        working-directory: pj/microsip
+        run: >
+          msbuild microsip.vcxproj /m /v:minimal
+          /p:Configuration=Release /p:Platform=Win32
+          /p:VcpkgEnabled=true /p:VcpkgTriplet=${{ env.VCPKG_TRIPLET }}
+
+      - name: Montar arquivos
+        shell: bash
+        run: |
+          exe=$(find pj/microsip -iname 'microsip.exe' -path '*Release*' | head -n1)
+          test -n "$exe" || { echo "MicroSIP.exe nao encontrado"; exit 1; }
+          mkdir -p stage orig
+          # sons, codificador MP3 e licenca vem do instalador oficial
+          7z x -y -oorig MicroSIP-3.22.23.exe > /dev/null
+          cp orig/*.wav orig/lame_enc.dll orig/License.txt stage/
+          cp installer/lang/langpack_portuguesebr.txt stage/
+          cp "$exe" stage/MicroSIP.exe
+          ls -la stage
+
+      - name: Gerar instalador
+        shell: pwsh
+        run: |
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          if (-not (Test-Path $nsis)) { choco install nsis -y --no-progress; }
+          & $nsis /V2 "/DVERSION=$env:FORK_VERSION" "/DSTAGE=..\stage" installer\microsip-fork.nsi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MicroSIP-Setup-${{ env.FORK_VERSION }}
+          path: installer/MicroSIP-Setup-*.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MicroSIP-portable-${{ env.FORK_VERSION }}
+          path: stage/
+
+      - name: Publicar release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/MicroSIP-Setup-*.exe

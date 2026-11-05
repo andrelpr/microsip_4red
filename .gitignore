@@ -1,0 +1,17 @@
+# gerados no build
+/pj/
+/stage/
+/orig/
+installer/MicroSIP-Setup-*.exe
+src/microsip/Release/
+src/microsip/Debug/
+*.obj
+*.pdb
+*.ilk
+*.aps
+.vs/
+__pycache__/
+
+# dados reais de clientes (senhas!) nunca vao para o git
+server/data/*.json
+!server/data/exemplo.json

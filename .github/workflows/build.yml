@@ -79,6 +79,11 @@ jobs:
           /p:PlatformToolset=v143 /p:BuildToolset=v143
           "/flp:logfile=${{ github.workspace }}\msbuild-pj.log;verbosity=normal"
 
+      - name: Ajustar nome da lib Opus
+        # o opus.c do PJSIP faz #pragma comment(lib, "libopus.a"); o vcpkg gera opus.lib
+        shell: bash
+        run: cp "C:/vcpkg/installed/${VCPKG_TRIPLET}/lib/opus.lib" pj/lib/libopus.a
+
       - name: Compilar MicroSIP
         working-directory: pj/microsip
         run: >

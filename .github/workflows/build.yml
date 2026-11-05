@@ -76,6 +76,8 @@ jobs:
           msbuild pjproject-vs14.sln /t:libpjproject /m /v:minimal
           /p:Configuration=Release-Static /p:Platform=Win32
           /p:VcpkgEnabled=true /p:VcpkgTriplet=${{ env.VCPKG_TRIPLET }}
+          /p:PlatformToolset=v143 /p:BuildToolset=v143
+          "/flp:logfile=${{ github.workspace }}\msbuild-pj.log;verbosity=normal"
 
       - name: Compilar MicroSIP
         working-directory: pj/microsip
@@ -83,6 +85,20 @@ jobs:
           msbuild microsip.vcxproj /m /v:minimal
           /p:Configuration=Release /p:Platform=Win32
           /p:VcpkgEnabled=true /p:VcpkgTriplet=${{ env.VCPKG_TRIPLET }}
+          /p:PlatformToolset=v143 /p:BuildToolset=v143
+          "/flp:logfile=${{ github.workspace }}\msbuild-microsip.log;verbosity=normal"
+
+      - name: Relatar erros de compilacao
+        if: failure()
+        shell: bash
+        run: python build/report_errors.py msbuild-pj.log msbuild-microsip.log
+
+      - name: Guardar logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-msbuild
+          path: msbuild-*.log
 
       - name: Montar arquivos
         shell: bash

@@ -26,7 +26,7 @@ IDI_CLOSE_2             ICON                    "res\\close2.ico"
 IDI_CONTACT         ICON                    "res\\contact.ico"
 IDI_DROPDOWN			ICON                    "res\\dropdown.ico"
 	IDI_INACTIVE            ICON                    _GLOBAL_ICON_INACTIVE
-	IDI_MISSED            ICON                    "res\\tray_missed.ico"
+	IDI_MISSED            ICON                    "res\\tray_missed_forip.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -39,6 +39,8 @@ LANGUAGE 17, 1
 // Bitmap
 //
 
+// [fork] logotipo exibido no topo do discador
+IDR_LOGO_PNG            PNG                     "res\\logotipo-1024x500.png"
 IDB_DOWNARROW           BITMAP                  "res\\arrow_down.bmp"
 IDB_UPARROW             BITMAP                  "res\\arrow_up.bmp"
 IDB_VMAIL_100               BITMAP                  "res\\voicemail.bmp"

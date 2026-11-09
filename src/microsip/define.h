@@ -33,8 +33,9 @@
 
 #define _GLOBAL_DIALER_WIDTH 162
 
-#define _GLOBAL_ICON "res\\microsip.ico"
-#define _GLOBAL_ICON_INACTIVE "res\\tray_inactive.ico"
+// [fork] icone da empresa (gerado de res/icon-*.png)
+#define _GLOBAL_ICON "res\\forip.ico"
+#define _GLOBAL_ICON_INACTIVE "res\\tray_inactive_forip.ico"
 
 #define _GLOBAL_HEIGHT1 0
 #define _GLOBAL_HEIGHT2 _GLOBAL_HEIGHT1+16
@@ -45,7 +46,10 @@
 
 #define _GLOBAL_HEIGHT_FINAL _GLOBAL_HEIGHT4
 
-#define _GLOBAL_HEIGHT 192 + _GLOBAL_HEIGHT_FINAL
+// [fork] faixa do logotipo no topo do discador (em DLU); 0 remove a faixa
+#define _GLOBAL_LOGO_HEIGHT 30
+
+#define _GLOBAL_HEIGHT 192 + _GLOBAL_HEIGHT_FINAL + _GLOBAL_LOGO_HEIGHT
 
 #define _GLOBAL_TAB_WIDTH 47
 

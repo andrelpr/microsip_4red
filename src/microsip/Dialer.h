@@ -32,6 +32,9 @@ enum DialerActions {
 	ACTION_CALL, ACTION_VIDEO_CALL, ACTION_MESSAGE
 };
 
+// [fork] logotipo no topo do discador
+namespace Gdiplus { class Bitmap; }
+
 class Dialer :
 	public CBaseDialog
 {
@@ -191,6 +194,13 @@ protected:
 	afx_msg void OnDestroy();
 	virtual BOOL OnInitDialog();
 	virtual void PostNcDestroy();
+	// [fork] logotipo
+	ULONG_PTR m_gdiplusToken;
+	Gdiplus::Bitmap* m_logo;
+	Gdiplus::Bitmap* m_logoScaled;
+	void LogoLoad();
+	bool LogoRect(CRect& rect);
+	afx_msg void OnPaint();
 	BOOL OnSetCursor(CWnd* pWnd, UINT nHitTest, UINT message);
 	DECLARE_MESSAGE_MAP()
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd *pWnd, UINT nCtlColor);

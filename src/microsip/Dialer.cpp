@@ -26,6 +26,10 @@
 #include "langpack.h"
 #include "Hid.h"
 #include "ButtonSafe.h"
+#include <shlwapi.h>
+#include <gdiplus.h>
+#pragma comment(lib, "gdiplus.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 static CString digitsDTMFDelayed;
 
@@ -38,6 +42,9 @@ Dialer::Dialer(CWnd* pParent /*=NULL*/)
     delayedDTMF = false;
     m_hasVoicemail = false;
     m_isButtonVoicemailVisible = false;
+    m_gdiplusToken = 0;
+    m_logo = NULL;
+    m_logoScaled = NULL;
     Create(IDD, pParent);
 }
 
@@ -655,7 +662,120 @@ BOOL Dialer::OnInitDialog()
 
     UpdateCallButton();
 
+    LogoLoad();
+
     return TRUE;
+}
+
+// [fork] logotipo no topo do discador.
+// Usa "logo.png" ao lado do executavel, se existir; senao, o PNG embutido (IDR_LOGO_PNG).
+static Gdiplus::Bitmap* LogoFromStream(IStream* stream)
+{
+    // copia para um bitmap proprio (PARGB) para nao depender do stream/arquivo depois
+    Gdiplus::Bitmap* src = Gdiplus::Bitmap::FromStream(stream);
+    Gdiplus::Bitmap* result = NULL;
+    if (src && src->GetLastStatus() == Gdiplus::Ok && src->GetWidth() && src->GetHeight()) {
+        result = new Gdiplus::Bitmap(src->GetWidth(), src->GetHeight(), PixelFormat32bppPARGB);
+        Gdiplus::Graphics g(result);
+        g.DrawImage(src, 0, 0, src->GetWidth(), src->GetHeight());
+    }
+    delete src;
+    return result;
+}
+
+void Dialer::LogoLoad()
+{
+    if (_GLOBAL_LOGO_HEIGHT <= 0) {
+        return;
+    }
+    Gdiplus::GdiplusStartupInput input;
+    if (Gdiplus::GdiplusStartup(&m_gdiplusToken, &input, NULL) != Gdiplus::Ok) {
+        m_gdiplusToken = 0;
+        return;
+    }
+    // 1) arquivo externo
+    TCHAR path[MAX_PATH];
+    DWORD len = GetModuleFileName(NULL, path, MAX_PATH);
+    if (len && len < MAX_PATH) {
+        CString file = path;
+        file = file.Left(file.ReverseFind('\\') + 1) + _T("logo.png");
+        IStream* stream = NULL;
+        if (GetFileAttributes(file) != INVALID_FILE_ATTRIBUTES
+            && SUCCEEDED(SHCreateStreamOnFileEx(file, STGM_READ | STGM_SHARE_DENY_NONE, FILE_ATTRIBUTE_NORMAL, FALSE, NULL, &stream))) {
+            m_logo = LogoFromStream(stream);
+            stream->Release();
+        }
+    }
+    // 2) recurso embutido
+    if (!m_logo) {
+        HINSTANCE hInst = AfxGetResourceHandle();
+        HRSRC hRes = FindResource(hInst, MAKEINTRESOURCE(IDR_LOGO_PNG), _T("PNG"));
+        if (hRes) {
+            DWORD size = SizeofResource(hInst, hRes);
+            HGLOBAL hData = LoadResource(hInst, hRes);
+            const void* data = hData ? LockResource(hData) : NULL;
+            if (data && size) {
+                IStream* stream = SHCreateMemStream((const BYTE*)data, size);
+                if (stream) {
+                    m_logo = LogoFromStream(stream);
+                    stream->Release();
+                }
+            }
+        }
+    }
+}
+
+bool Dialer::LogoRect(CRect& rect)
+{
+    // area entre o topo e o campo de numero, na largura do campo de numero
+    CWnd* number = GetDlgItem(IDC_NUMBER);
+    if (!m_logo || !number) {
+        return false;
+    }
+    CRect numberRect;
+    number->GetWindowRect(numberRect);
+    ScreenToClient(numberRect);
+    CRect margin(0, 4, 0, 4);
+    MapDialogRect(&margin);
+    rect.left = numberRect.left;
+    rect.right = numberRect.right;
+    rect.top = margin.top;
+    rect.bottom = numberRect.top - margin.bottom;
+    if (rect.Width() <= 0 || rect.Height() <= 0) {
+        return false;
+    }
+    // mantem a proporcao da imagem, centralizada
+    double scale = min((double)rect.Width() / m_logo->GetWidth(), (double)rect.Height() / m_logo->GetHeight());
+    int w = max(1, (int)(m_logo->GetWidth() * scale + 0.5));
+    int h = max(1, (int)(m_logo->GetHeight() * scale + 0.5));
+    rect.left += (rect.Width() - w) / 2;
+    rect.top += (rect.Height() - h) / 2;
+    rect.right = rect.left + w;
+    rect.bottom = rect.top + h;
+    return true;
+}
+
+void Dialer::OnPaint()
+{
+    CPaintDC dc(this);
+    CRect rect;
+    if (!LogoRect(rect)) {
+        return;
+    }
+    // redimensiona uma vez (alta qualidade) e reaproveita enquanto o tamanho nao mudar
+    if (!m_logoScaled || (int)m_logoScaled->GetWidth() != rect.Width() || (int)m_logoScaled->GetHeight() != rect.Height()) {
+        delete m_logoScaled;
+        m_logoScaled = new Gdiplus::Bitmap(rect.Width(), rect.Height(), PixelFormat32bppPARGB);
+        Gdiplus::Graphics g(m_logoScaled);
+        g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        Gdiplus::ImageAttributes attr;
+        attr.SetWrapMode(Gdiplus::WrapModeTileFlipXY); // evita borda escura no redimensionamento
+        g.DrawImage(m_logo, Gdiplus::Rect(0, 0, rect.Width(), rect.Height()),
+            0, 0, m_logo->GetWidth(), m_logo->GetHeight(), Gdiplus::UnitPixel, &attr);
+    }
+    Gdiplus::Graphics g(dc.GetSafeHdc());
+    g.DrawImage(m_logoScaled, rect.left, rect.top, rect.Width(), rect.Height());
 }
 
 int Dialer::OnCreate(LPCREATESTRUCT lpCreateStruct)
@@ -672,6 +792,14 @@ int Dialer::OnCreate(LPCREATESTRUCT lpCreateStruct)
 void Dialer::OnDestroy()
 {
     KillTimer(IDT_TIMER_VU_METER);
+    delete m_logoScaled;
+    m_logoScaled = NULL;
+    delete m_logo;
+    m_logo = NULL;
+    if (m_gdiplusToken) {
+        Gdiplus::GdiplusShutdown(m_gdiplusToken);
+        m_gdiplusToken = 0;
+    }
     CBaseDialog::OnDestroy();
 }
 
@@ -685,6 +813,7 @@ BEGIN_MESSAGE_MAP(Dialer, CBaseDialog)
     ON_BN_CLICKED(IDCANCEL, OnBnClickedCancel)
     ON_WM_SETCURSOR()
     ON_WM_CTLCOLOR()
+    ON_WM_PAINT()
     ON_BN_CLICKED(IDC_DIALER_DND, &Dialer::OnBnClickedDND)
     ON_BN_CLICKED(IDC_DIALER_FWD, &Dialer::OnBnClickedFWD)
     ON_BN_CLICKED(IDC_DIALER_AA, &Dialer::OnBnClickedAA)

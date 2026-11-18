@@ -64,15 +64,26 @@ BOOL SimpleAccountDlg::OnInitDialog()
     if (!cfg.ext.IsEmpty()) {
         ext = cfg.ext;
     }
+#ifdef _FORK_FIXED_SERVER
+    // [fork] variante de cliente: servidor fixo, sem edicao
+    server = _FORK_FIXED_SERVER;
+    GetDlgItem(IDC_SIMPLE_SERVER)->EnableWindow(FALSE);
+#endif
     GetDlgItem(IDC_SIMPLE_EXT)->SetWindowText(ext);
     GetDlgItem(IDC_SIMPLE_PASSWORD)->SetWindowText(password);
     GetDlgItem(IDC_SIMPLE_SERVER)->SetWindowText(server);
     // nao revela a senha ja salva: o link so aparece quando o usuario digita
     GetDlgItem(IDC_SIMPLE_SHOW_PASSWORD)->ShowWindow(password.IsEmpty() ? SW_SHOW : SW_HIDE);
 
+#ifdef _FORK_FIXED_SERVER
+    if (m_provisioning) {
+        SetStatus(Translate(_T("Enter your extension and password.")));
+    }
+#else
     if (m_provisioning) {
         SetStatus(Translate(_T("Enter your extension and password. The other settings will be downloaded automatically. The SIP server is only needed if automatic setup fails.")));
     }
+#endif
     else {
         SetStatus(_T(""));
     }
@@ -140,6 +151,9 @@ void SimpleAccountDlg::OnBnClickedOk()
     ext.Trim();
     password.Trim(); // remove espacos colados por engano
     server.Trim();
+#ifdef _FORK_FIXED_SERVER
+    server = _FORK_FIXED_SERVER;
+#endif
 
     if (ext.IsEmpty() || password.IsEmpty()) {
         SetStatus(Translate(_T("Please enter the extension and the password.")));

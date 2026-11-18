@@ -13,3 +13,6 @@
 
 // Chave usada para criptografar senhas no microsip.ini
 // #define _GLOBAL_KEY "troque-esta-chave"
+
+// Servidor SIP fixo (variante de cliente): campo preenchido e bloqueado nas telas de conta
+// #define _FORK_FIXED_SERVER L"sip.exemplo.com.br"

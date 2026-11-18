@@ -674,6 +674,8 @@ Ramal
 Avançado...
 [Enter your extension and password. The other settings will be downloaded automatically. The SIP server is only needed if automatic setup fails.]
 Informe seu ramal e senha. As demais configurações serão baixadas automaticamente. O servidor SIP só é necessário se a configuração automática falhar.
+[Enter your extension and password.]
+Informe seu ramal e senha.
 [Please enter the extension and the password.]
 Informe o ramal e a senha.
 [Finish your calls before changing the account.]

@@ -1,7 +1,7 @@
 ; [fork] Instalador do MicroSIP personalizado
 ;
 ; Compilar (feito pelo GitHub Actions):
-;   makensis /DVERSION=3.22.16-fork.1 /DSTAGE=..\stage [/DPROV_URL=https://...] microsip-fork.nsi
+;   makensis /DVERSION=3.22.16-fork.1 /DSTAGE=..\stage [/DPROV_URL=https://...] [/DSUFFIX=-cliente] microsip-fork.nsi
 ;
 ; Uso:
 ;   MicroSIP-Setup.exe                         instalacao normal (com telas)
@@ -19,6 +19,9 @@ Unicode true
 !ifndef VERSION
   !define VERSION "dev"
 !endif
+!ifndef SUFFIX
+  !define SUFFIX ""
+!endif
 !ifndef STAGE
   !define STAGE "..\stage"
 !endif
@@ -27,7 +30,7 @@ Unicode true
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
 Name "${APPNAME}"
-OutFile "MicroSIP-Setup-${VERSION}.exe"
+OutFile "MicroSIP-Setup-${VERSION}${SUFFIX}.exe"
 InstallDir "$PROGRAMFILES\${APPNAME}"
 InstallDirRegKey HKLM "Software\${APPNAME}" "InstallDir"
 RequestExecutionLevel admin

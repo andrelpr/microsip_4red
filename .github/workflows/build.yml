@@ -6,6 +6,7 @@
 #   variable FORK_PROVISIONING_URL   URL base do provisionamento embutida (opcional; o instalador aceita /URL=)
 #
 # Resultado: artefato "MicroSIP-Setup" (instalador) e "MicroSIP-portable" (exe + arquivos).
+# Variantes de cliente (ex.: Impacto) saem em artefatos proprios e NAO vao para o Release.
 # Ao criar uma tag v* (ex.: v1.0.0), publica um Release com o instalador.
 
 name: build
@@ -93,18 +94,6 @@ jobs:
           /p:PlatformToolset=v143 /p:BuildToolset=v143
           "/flp:logfile=${{ github.workspace }}\msbuild-microsip.log;verbosity=normal"
 
-      - name: Relatar erros de compilacao
-        if: failure()
-        shell: bash
-        run: python build/report_errors.py msbuild-pj.log msbuild-microsip.log
-
-      - name: Guardar logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-msbuild
-          path: msbuild-*.log
-
       - name: Montar arquivos
         shell: bash
         run: |
@@ -126,18 +115,58 @@ jobs:
           & $nsis /V2 "/DVERSION=$env:FORK_VERSION" "/DSTAGE=..\stage" installer\microsip-fork.nsi
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      # ---- variante do cliente Impacto: servidor SIP fixo e bloqueado nas telas de conta
+      - name: Variante Impacto
+        shell: pwsh
+        env:
+          FORK_PROVISIONING_URL: ${{ vars.FORK_PROVISIONING_URL }}
+          FORK_INI_KEY: ${{ secrets.FORK_INI_KEY }}
+          FORK_FIXED_SERVER: impactocallcenter.ddns.net
+        run: |
+          python build/gen_fork_config.py pj/microsip/fork_config.h
+          msbuild pj/microsip/microsip.vcxproj /m /v:minimal `
+            /p:Configuration=Release /p:Platform=Win32 `
+            /p:VcpkgEnabled=true /p:VcpkgTriplet=$env:VCPKG_TRIPLET `
+            /p:PlatformToolset=v143 /p:BuildToolset=v143 `
+            "/flp:logfile=$env:GITHUB_WORKSPACE\msbuild-impacto.log;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $exe = Get-ChildItem pj/microsip -Recurse -Filter MicroSIP.exe | Where-Object { $_.FullName -match 'Release' } | Select-Object -First 1
+          if (-not $exe) { Write-Error "MicroSIP.exe nao encontrado"; exit 1 }
+          Copy-Item stage stage-impacto -Recurse
+          Copy-Item $exe.FullName stage-impacto/MicroSIP.exe -Force
+          $nsis = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          & $nsis /V2 "/DVERSION=$env:FORK_VERSION" "/DSUFFIX=-impacto" "/DSTAGE=..\stage-impacto" installer\microsip-fork.nsi
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Relatar erros de compilacao
+        if: failure()
+        shell: bash
+        run: python build/report_errors.py msbuild-pj.log msbuild-microsip.log msbuild-impacto.log
+
+      - name: Guardar logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-msbuild
+          path: msbuild-*.log
+
       - uses: actions/upload-artifact@v4
         with:
           name: MicroSIP-Setup-${{ env.FORK_VERSION }}
-          path: installer/MicroSIP-Setup-*.exe
+          path: installer/MicroSIP-Setup-${{ env.FORK_VERSION }}.exe
 
       - uses: actions/upload-artifact@v4
         with:
           name: MicroSIP-portable-${{ env.FORK_VERSION }}
           path: stage/
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MicroSIP-Setup-${{ env.FORK_VERSION }}-impacto
+          path: installer/MicroSIP-Setup-${{ env.FORK_VERSION }}-impacto.exe
+
       - name: Publicar release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: installer/MicroSIP-Setup-*.exe
+          files: installer/MicroSIP-Setup-${{ env.FORK_VERSION }}.exe

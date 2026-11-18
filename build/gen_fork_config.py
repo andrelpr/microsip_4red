@@ -5,6 +5,7 @@
   FORK_VERSION            ex.: 3.22.16-fork.12       (padrao: "dev")
   FORK_PROVISIONING_URL   URL base de provisionamento embutida (opcional)
   FORK_INI_KEY            chave de criptografia das senhas no microsip.ini (opcional, recomendado)
+  FORK_FIXED_SERVER       servidor SIP fixo (opcional; variante de cliente): campo preenchido e bloqueado
 
 Uso: python build/gen_fork_config.py <caminho/fork_config.h>
 """
@@ -21,6 +22,7 @@ def main() -> int:
     version = os.environ.get("FORK_VERSION", "").strip() or "dev"
     url = os.environ.get("FORK_PROVISIONING_URL", "").strip().rstrip("/")
     key = os.environ.get("FORK_INI_KEY", "").strip()
+    server = os.environ.get("FORK_FIXED_SERVER", "").strip()
 
     lines = [
         "/* Gerado automaticamente por build/gen_fork_config.py - nao editar */",
@@ -37,9 +39,12 @@ def main() -> int:
     else:
         print("AVISO: FORK_INI_KEY nao definido; usando a chave padrao do codigo publico", file=sys.stderr)
 
+    if server:
+        lines.append(f"#define _FORK_FIXED_SERVER L{c_string(server)}")
+
     with open(out, "w", encoding="utf-8", newline="\r\n") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"{out}: versao={version} url={'(definida)' if url else '(vazia)'} chave={'(definida)' if key else '(padrao)'}")
+    print(f"{out}: versao={version} url={'(definida)' if url else '(vazia)'} chave={'(definida)' if key else '(padrao)'} servidor_fixo={server or '(nenhum)'}")
     return 0
 
 

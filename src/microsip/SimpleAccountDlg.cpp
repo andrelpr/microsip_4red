@@ -230,6 +230,11 @@ void SimpleAccountDlg::SaveManual(const CString& ext, const CString& password, c
         acc.authID.Empty();
     }
     acc.server = server;
+#ifdef _FORK_FIXED_SERVER
+    // [fork] variante de cliente: dominio igual ao servidor fixo e sem proxy
+    acc.domain = server;
+    acc.proxy.Empty();
+#endif
     acc.username = ext;
     acc.password = password;
     acc.rememberPassword = 1;

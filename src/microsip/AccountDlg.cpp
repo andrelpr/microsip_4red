@@ -273,13 +273,15 @@ void AccountDlg::Load(int id)
     edit = (CEdit*)GetDlgItem(IDC_EDIT_DOMAIN);
     edit->SetWindowText(m_Account.domain);
 #ifdef _FORK_FIXED_SERVER
-    // [fork] variante de cliente: servidor fixo, sem edicao (a conta local, id 0, nao tem servidor)
+    // [fork] variante de cliente: servidor e dominio fixos, sem proxy, sem edicao
+    // (a conta local, id 0, nao tem servidor)
     if (id) {
         GetDlgItem(IDC_EDIT_SERVER)->SetWindowText(_FORK_FIXED_SERVER);
         GetDlgItem(IDC_EDIT_SERVER)->EnableWindow(FALSE);
-        if (m_Account.domain.IsEmpty()) {
-            GetDlgItem(IDC_EDIT_DOMAIN)->SetWindowText(_FORK_FIXED_SERVER);
-        }
+        GetDlgItem(IDC_EDIT_DOMAIN)->SetWindowText(_FORK_FIXED_SERVER);
+        GetDlgItem(IDC_EDIT_DOMAIN)->EnableWindow(FALSE);
+        GetDlgItem(IDC_EDIT_PROXY)->SetWindowText(_T(""));
+        GetDlgItem(IDC_EDIT_PROXY)->EnableWindow(FALSE);
     }
 #endif
 
@@ -405,17 +407,19 @@ void AccountDlg::OnBnClickedOk()
     edit = (CEdit*)GetDlgItem(IDC_EDIT_SERVER);
     edit->GetWindowText(str);
     m_Account.server = str.Trim();
-#ifdef _FORK_FIXED_SERVER
-    if (accountId) {
-        m_Account.server = _FORK_FIXED_SERVER;
-    }
-#endif
     edit = (CEdit*)GetDlgItem(IDC_EDIT_PROXY);
     edit->GetWindowText(str);
     m_Account.proxy = str.Trim();
     edit = (CEdit*)GetDlgItem(IDC_EDIT_DOMAIN);
     edit->GetWindowText(str);
     m_Account.domain = str.Trim();
+#ifdef _FORK_FIXED_SERVER
+    if (accountId) {
+        m_Account.server = _FORK_FIXED_SERVER;
+        m_Account.domain = _FORK_FIXED_SERVER;
+        m_Account.proxy.Empty();
+    }
+#endif
 
     edit = (CEdit*)GetDlgItem(IDC_EDIT_AUTHID);
     edit->GetWindowText(str);
